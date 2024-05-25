@@ -108,6 +108,13 @@ USER root
 COPY ../../jenkins-agent /usr/local/bin/jenkins-agent
 RUN chmod +x /usr/local/bin/jenkins-agent &&\
     ln -s /usr/local/bin/jenkins-agent /usr/local/bin/jenkins-slave
+
+# Install Docker client
+ARG DOCKER_VERSION=26.0.2
+ARG DOCKER_COMPOSE_VERSION=v2.27.0
+RUN curl -fsSL https://download.docker.com/linux/static/stable/armhf/docker-$DOCKER_VERSION.tgz | tar --strip-components=1 -xz -C /usr/local/bin docker/docker
+RUN curl -fsSL https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-linux-armv7 > /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+
 USER ${user}
 
 LABEL \
