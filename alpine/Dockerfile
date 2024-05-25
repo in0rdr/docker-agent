@@ -79,7 +79,7 @@ RUN chmod 0644 /usr/share/jenkins/agent.jar \
 
 
 ENV JAVA_HOME=/opt/java/openjdk
-#COPY --from=jre-build /javaruntime "$JAVA_HOME"
+COPY --from=jre-build /opt/jdk-21.0.3_9 "$JAVA_HOME"
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 USER "${user}"
