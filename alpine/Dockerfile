@@ -115,6 +115,33 @@ ARG DOCKER_COMPOSE_VERSION=v2.27.0
 RUN curl -fsSL https://download.docker.com/linux/static/stable/armhf/docker-$DOCKER_VERSION.tgz | tar --strip-components=1 -xz -C /usr/local/bin docker/docker
 RUN curl -fsSL https://github.com/docker/compose/releases/download/$DOCKER_COMPOSE_VERSION/docker-compose-linux-armv7 > /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
 
+# Install Podman and Buildah, configure fuse-overlayfs as mount_program
+#
+# In rootless mode, without the CAP_SYS_ADMIN capability, many kernels prevent
+# mounting of overlay file systems, requiring you to specify a mount_program. The
+# mount_program option is also required on systems where the underlying storage
+# is btrfs, aufs, zfs, overlay, or ecryptfs based file systems. mount_program =
+# "/usr/bin/fuse-overlayfs"
+# - https://github.com/containers/buildah/issues/3666#issuecomment-1349687679
+# - https://github.com/containers/storage/blob/main/docs/containers-storage.conf.5.md
+#
+# netavark is a required dependency to run `buildah bud`.
+RUN apk add --no-cache buildah netavark fuse-overlayfs fuse
+# Set up environment variables to note that this is not starting with user
+# namespace and default to isolate the filesystem with chroot.
+# https://developers.redhat.com/blog/2019/08/14/best-practices-for-running-buildah-in-a-container
+ENV _BUILDAH_STARTED_IN_USERNS="" BUILDAH_ISOLATION=chroot
+# https://docs.podman.io/en/latest/markdown/podman.1.html#note-unsupported-file-systems-in-rootless-mode
+RUN sed -i 's/#mount_program/mount_program/' /etc/containers/storage.conf
+# fuse: device not found, try 'modprobe fuse' first
+# https://github.com/containers/podman/blob/main/troubleshooting.md#24-podman-container-images-fail-with-fuse-device-not-found-when-run
+RUN mkdir -p /etc/modules.load.d
+RUN echo fuse > /etc/modules.load.d/fuse.conf
+# Configure missing subuid/subgids for rootless podman builds
+# https://docs.podman.io/en/latest/markdown/podman.1.html#rootless-mode
+RUN echo jenkins:10000:65536 >> /etc/subuid
+RUN echo jenkins:10000:65536 >> /etc/subgid
+
 USER ${user}
 
 LABEL \
